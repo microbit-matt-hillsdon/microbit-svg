@@ -1,0 +1,155 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Design your own micro:bit</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <style>
+      body {
+        height: 100vh;
+        width: 100vw;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+      }
+      button {
+        font-size: 16pt;
+        padding: 0.8rem;
+        color: rgb(16, 124, 212);
+        background: transparent; 
+        border: 2px solid rgb(16, 124, 212);;
+        border-radius: 8px; 
+        margin: 0.4em;
+      }
+      #button-bar {
+        display: flex;
+        flex-direction: column;
+      }
+      #controls {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        width: 12em;
+      }
+      #wrapper {
+        display: flex;
+      }
+      @media screen and (max-width: 1000px) {
+        #wrapper {
+          flex-direction: column;
+          justify-items: center;
+          align-items: center;
+        }
+        #controls {
+          flex-direction: row;
+          width: 30em;
+        }
+        #button-bar {
+          flex-direction: row;
+        }
+      }
+    </style>
+    <script>
+      const initializeMicrobitSvg = svgDocument => {
+        // We always display the unlit LEDs and toggle the corresponding lit ones.
+        const unlitLedsSelector = '#UnlitLEDs';
+        const litLedsSelector = '#LEDsOn';
+        // These need proper IDs.
+        const buttonASelector = '#ButtonGroup';
+        const buttonBSelector = '#use8162';
+        const colourLayerSelectors = ['#ColourFringeGreen', '#ColourFringeRed', '#ColourFringeBlue', '#ColourFringeYellow'];
+        let activeColourLayer = 0;
+
+        const colourLayers = colourLayerSelectors.map(id => svgDocument.querySelector(id));
+        const showColourLayer = layer => {
+          colourLayers.forEach(other => {
+            other.style.display = other === layer ? 'inline' : 'none';
+          });
+        };
+        colourLayers.forEach(layer => {
+          layer.style.pointerEvents = 'all';
+          layer.onclick = () => {
+            activeColourLayer = (activeColourLayer + 1) % colourLayers.length;
+            showColourLayer(colourLayers[activeColourLayer]);
+          };
+        });
+        showColourLayer(colourLayers[Math.floor(Math.random() * 4)]);
+
+        const allUnlit = svgDocument.querySelector(unlitLedsSelector).querySelectorAll('use');
+        const allLit = svgDocument.querySelector(litLedsSelector).querySelectorAll('use');
+        const clearLit = () => allLit.forEach(led => led.style.display = 'none');
+        const lightAll = () => allLit.forEach(led => led.style.display = 'inline');
+
+        for (let c = 0; c < 5; ++c) {
+          for (let r = 0; r < 5; ++r) {
+            // Note by row vs by column here (unintentional SVG difference).
+            const lit = allLit[c * 5 + r];
+            const unlit = allUnlit[r * 5 + c];
+            lit.onclick = () => lit.style.display = 'none';
+            // Use the whole group for a larger click target.
+            unlit.style.pointerEvents = 'all';
+            unlit.onclick = () => lit.style.display = lit.style.display === 'none' ? 'inline' : 'none';
+          }
+        }
+
+        svgDocument.querySelector(buttonASelector).onclick = lightAll;
+        svgDocument.querySelector(buttonBSelector).onclick = clearLit;
+        clearLit();
+      }
+
+      const download = (dataUrl, filename) => {
+        var element = document.createElement('a');
+        element.setAttribute('href', dataUrl);
+        element.setAttribute('download', filename);
+        element.style.display = 'none';
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+      }
+
+      window.onload = () => {
+        const svgObject = document.querySelector('#svg');
+        const svgDocument = svgObject.contentDocument;
+        if (!svgDocument) {
+          document.body.innerHTML = '<strong>Could not read SVG content. Viewing this HTML file locally without a web server or using a very old browser will trigger this error.</strong> '
+        }
+        initializeMicrobitSvg(svgDocument);
+        const svgToDataUrl = () => {
+          const svgString = new XMLSerializer().serializeToString(svgDocument);
+          return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
+        }
+        document.querySelector('#download-svg').onclick = () => {
+          download(svgToDataUrl(), 'custom-microbit.svg');
+        }
+        document.querySelector('#download-png').onclick = () => {
+          const dataUrl = svgToDataUrl();
+          const img = document.createElement('img');
+          const width = svgDocument.querySelector('svg').width;
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = svgObject.clientWidth;
+            canvas.height = svgObject.clientHeight; 
+            const context = canvas.getContext("2d");
+            context.drawImage(img, 0, 0);
+            download(canvas.toDataURL('image/png'), 'custom-microbit.png');
+          };
+          img.setAttribute('src', svgToDataUrl());
+        }
+      };
+    </script>
+  </head>
+  <body>
+    <div id="wrapper">
+      <object id="svg" data="microbit-drawing.svg" type="image/svg+xml" alt="micro:bit device"></object>
+      <div id="controls">
+        <noscript>This page requires JavaScript to edit the micro:bit.</noscript>
+        <p>Edit the micro:bit LEDs then export your image. Click the fringe to change colour.</p>
+        <div id="button-bar">
+          <button id="download-svg">Download SVG</button>
+          <button id="download-png">Download PNG</button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
